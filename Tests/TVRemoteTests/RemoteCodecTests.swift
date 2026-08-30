@@ -39,7 +39,7 @@ final class RemoteCodecTests: XCTestCase {
     func testEveryRemoteKeyEncodesToItsAndroidCode() {
         let expected: [RemoteKey: UInt64] = [
             .up: 19, .down: 20, .left: 21, .right: 22, .ok: 23,
-            .back: 4, .home: 3, .playPause: 85, .volumeUp: 24, .volumeDown: 25,
+            .back: 4, .home: 3, .playPause: 85, .volumeUp: 24, .volumeDown: 25, .tvInputHDMI1: 243,
         ]
         for key in RemoteKey.allCases {
             XCTAssertEqual(key.androidKeyCode, expected[key], "\(key.rawValue)")

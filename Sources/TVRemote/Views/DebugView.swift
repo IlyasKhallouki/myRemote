@@ -20,7 +20,8 @@ struct DebugView: View {
             .listRowBackground(Color.surfaceRaised)
 
             Section("Transport log") {
-                if let log = controller.mockTransport?.log, !log.isEmpty {
+                let log = TransportLog.shared.entries
+                if !log.isEmpty {
                     ForEach(log.reversed()) { entry in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(Self.formatter.string(from: entry.timestamp))

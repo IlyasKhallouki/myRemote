@@ -39,7 +39,7 @@ struct RemoteView: View {
             MacroGrid(
                 macros: Macro.all,
                 state: macros.state(for:),
-                run: { macro in Task { await macros.run(macro) } }
+                run: { macro in Task { await macros.run(macro, using: controller.transport) } }
             )
 
             Spacer(minLength: 0)
@@ -71,7 +71,7 @@ struct RemoteView: View {
                 Task { await controller.perform(key) }
             case .macro(let id):
                 guard let macro = Macro.all.first(where: { $0.id == id }) else { return }
-                Task { await macros.run(macro) }
+                Task { await macros.run(macro, using: controller.transport) }
             }
         }
         .onChange(of: scenePhase, initial: true) { _, phase in

@@ -50,7 +50,11 @@ final class AndroidTVTransport: TVTransport {
     }
 
     func send(_ key: RemoteKey) async throws {
-        guard case .connected = state, let connection else { throw TransportError.notConnected }
+        guard case .connected = state, let connection else {
+            TransportLog.shared.append("send \(key.rawValue) REJECTED (not connected)")
+            throw TransportError.notConnected
+        }
+        TransportLog.shared.append("send \(key.rawValue) (code \(key.androidKeyCode))")
         write(RemoteCodec.keyInject(code: key.androidKeyCode), on: connection)
     }
 
@@ -127,12 +131,14 @@ final class AndroidTVTransport: TVTransport {
             write(RemoteCodec.pingReply(value), on: connection)
         case .start(let started):
             isOn = started
+            TransportLog.shared.append("session started, tv is_on=\(started)")
             state = .connected
             finishHandshake(.success(()))
         case .volume(let level, let max, let muted):
             volume = (level, max, muted)
         case .currentApp(let package):
             currentApp = package
+            TransportLog.shared.append("current app: \(package)")
         case .error(let text):
             fail(TransportError.protocolFailure(text))
         case .unrecognised:
@@ -150,6 +156,7 @@ final class AndroidTVTransport: TVTransport {
     }
 
     private func fail(_ error: Error) {
+        TransportLog.shared.append("failed: \(error.localizedDescription)")
         state = .failed(error)
         finishHandshake(.failure(error))
         connection?.cancel()

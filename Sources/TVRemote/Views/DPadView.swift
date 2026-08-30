@@ -13,10 +13,10 @@ struct DPadView: View {
             ZStack {
                 Circle().fill(Color.surfaceRaised)
 
-                chevron("chevron.up", offset: CGSize(width: 0, height: -(diameter / 2 - chevronInset - 8)))
-                chevron("chevron.down", offset: CGSize(width: 0, height: diameter / 2 - chevronInset - 8))
-                chevron("chevron.left", offset: CGSize(width: -(diameter / 2 - chevronInset - 8), height: 0))
-                chevron("chevron.right", offset: CGSize(width: diameter / 2 - chevronInset - 8, height: 0))
+                chevron("chevron.up", key: .up, offset: CGSize(width: 0, height: -(diameter / 2 - chevronInset - 8)))
+                chevron("chevron.down", key: .down, offset: CGSize(width: 0, height: diameter / 2 - chevronInset - 8))
+                chevron("chevron.left", key: .left, offset: CGSize(width: -(diameter / 2 - chevronInset - 8), height: 0))
+                chevron("chevron.right", key: .right, offset: CGSize(width: diameter / 2 - chevronInset - 8, height: 0))
 
                 Circle()
                     .fill(Color.surfaceInset)
@@ -50,10 +50,13 @@ struct DPadView: View {
             }
     }
 
-    private func chevron(_ name: String, offset: CGSize) -> some View {
+    private func chevron(_ name: String, key: RemoteKey, offset: CGSize) -> some View {
         Image(systemName: name)
             .font(.system(size: 17, weight: .medium))
             .foregroundStyle(Color.textSecondary)
+            .frame(width: 56, height: 56)
+            .contentShape(Rectangle())
             .offset(x: offset.width, y: offset.height)
+            .onTapGesture { send(key) }
     }
 }

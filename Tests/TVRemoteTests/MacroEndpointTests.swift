@@ -22,12 +22,25 @@ final class MacroEndpointTests: XCTestCase {
         )
     }
 
+    func testXboxSwitchesToHDMI1() {
+        let xbox = Macro.all.first { $0.id == "xbox" }
+        guard case let .keys(keys)? = xbox?.action else { return XCTFail("xbox should send keys") }
+        XCTAssertEqual(keys, [.tvInputHDMI1])
+        XCTAssertEqual(keys.first?.androidKeyCode, 243)
+    }
+
+    func testServerMacrosStillNeedABaseURL() {
+        let streamPC = Macro.all.first { $0.id == "stream-pc" }!
+        if case .server = streamPC.action {} else { XCTFail("stream-pc should be a server macro") }
+        XCTAssertNil(streamPC.endpoint(base: ""))
+    }
+
     func testExactlyOneAccentedMacro() {
         XCTAssertEqual(Macro.all.filter(\.accented).count, 1)
         XCTAssertEqual(Macro.all.first(where: \.accented)?.id, "stream-pc")
     }
 
     func testAllTenRemoteKeysExist() {
-        XCTAssertEqual(RemoteKey.allCases.count, 10)
+        XCTAssertEqual(RemoteKey.allCases.count, 11)
     }
 }

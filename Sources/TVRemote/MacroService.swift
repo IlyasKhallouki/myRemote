@@ -33,9 +33,27 @@ final class MacroService {
         states[macro.id] ?? .idle
     }
 
-    func run(_ macro: Macro) async {
+    func run(_ macro: Macro, using transport: TVTransport? = nil) async {
         guard state(for: macro) != .inFlight else { return }
         clearTasks[macro.id]?.cancel()
+
+        if case let .keys(keys) = macro.action {
+            guard let transport else {
+                settle(macro, .failed("Not connected"))
+                return
+            }
+            states[macro.id] = .inFlight
+            do {
+                for key in keys {
+                    try await transport.send(key)
+                    try? await Task.sleep(for: .milliseconds(180))
+                }
+                settle(macro, .succeeded)
+            } catch {
+                settle(macro, .failed("Not connected"))
+            }
+            return
+        }
 
         guard let url = endpoint(for: macro) else {
             settle(macro, .failed("No server configured"))
