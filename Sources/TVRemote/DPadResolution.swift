@@ -1,4 +1,4 @@
-import CoreGraphics
+import Foundation
 
 enum DPadResolution {
     static let threshold: CGFloat = 24

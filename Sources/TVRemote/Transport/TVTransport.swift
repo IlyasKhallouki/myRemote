@@ -1,10 +1,6 @@
 import Foundation
 import Network
 
-enum RemoteKey: String, CaseIterable, Sendable {
-    case up, down, left, right, ok, back, home, playPause, volumeUp, volumeDown
-}
-
 enum TransportState {
     case idle
     case connecting

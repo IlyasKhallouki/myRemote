@@ -1,19 +1,5 @@
 import Foundation
 
-struct Macro: Identifiable, Sendable {
-    let id: String
-    let label: String
-    let symbol: String
-    let accented: Bool
-
-    static let all: [Macro] = [
-        Macro(id: "stream-pc", label: "Stream PC", symbol: "desktopcomputer", accented: true),
-        Macro(id: "xbox", label: "Xbox", symbol: "gamecontroller", accented: false),
-        Macro(id: "movie-night", label: "Movie night", symbol: "film", accented: false),
-        Macro(id: "reset", label: "Reset", symbol: "arrow.clockwise", accented: false),
-    ]
-}
-
 enum MacroState: Equatable {
     case idle
     case inFlight
@@ -71,10 +57,7 @@ final class MacroService {
     }
 
     func endpoint(for macro: Macro) -> URL? {
-        let trimmed = baseURL.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-        let base = trimmed.hasSuffix("/") ? String(trimmed.dropLast()) : trimmed
-        return URL(string: "\(base)/macro/\(macro.id)")
+        macro.endpoint(base: baseURL)
     }
 
     private func settle(_ macro: Macro, _ state: MacroState) {
