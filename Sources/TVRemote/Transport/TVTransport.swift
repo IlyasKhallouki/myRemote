@@ -50,6 +50,7 @@ protocol TVTransport: AnyObject {
     func send(_ key: RemoteKey) async throws
     func launch(_ appLink: String) async throws
     func sendText(_ text: String) async throws
+    func sendKeyCode(_ code: UInt64) async throws
     var canType: Bool { get }
     func disconnect()
 }

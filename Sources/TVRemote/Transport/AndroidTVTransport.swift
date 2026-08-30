@@ -90,6 +90,11 @@ final class AndroidTVTransport: TVTransport {
         write(RemoteCodec.textInput(text, imeCounter: imeCounter, fieldCounter: fieldCounter), on: connection)
     }
 
+    func sendKeyCode(_ code: UInt64) async throws {
+        guard case .connected = state, let connection else { throw TransportError.notConnected }
+        write(RemoteCodec.keyInject(code: code), on: connection)
+    }
+
     func launch(_ appLink: String) async throws {
         guard case .connected = state, let connection else { throw TransportError.notConnected }
         write(RemoteCodec.launchApp(appLink), on: connection)

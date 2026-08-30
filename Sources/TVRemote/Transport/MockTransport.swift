@@ -32,6 +32,11 @@ final class MockTransport: TVTransport {
         append("text \"\(text)\"")
     }
 
+    func sendKeyCode(_ code: UInt64) async throws {
+        guard case .connected = state else { throw TransportError.notConnected }
+        append("keycode \(code)")
+    }
+
     func disconnect() {
         append("disconnect")
         state = .idle

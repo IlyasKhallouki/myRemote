@@ -106,3 +106,33 @@ extension RemoteCodecTests {
         XCTAssertFalse(bytes.isEmpty)
     }
 }
+
+final class CharacterKeysTests: XCTestCase {
+    func testLettersMapToTheAndroidRange() {
+        XCTAssertEqual(CharacterKeys.code(for: "a"), 29)
+        XCTAssertEqual(CharacterKeys.code(for: "z"), 54)
+        XCTAssertEqual(CharacterKeys.code(for: "A"), 29, "case folds")
+    }
+
+    func testDigitsMapToTheAndroidRange() {
+        XCTAssertEqual(CharacterKeys.code(for: "0"), 7)
+        XCTAssertEqual(CharacterKeys.code(for: "9"), 16)
+    }
+
+    func testPunctuation() {
+        XCTAssertEqual(CharacterKeys.code(for: " "), 62)
+        XCTAssertEqual(CharacterKeys.code(for: "."), 56)
+        XCTAssertEqual(CharacterKeys.code(for: "@"), 77)
+    }
+
+    func testEveryAlphanumericIsTypeable() {
+        for character in "abcdefghijklmnopqrstuvwxyz0123456789" {
+            XCTAssertNotNil(CharacterKeys.code(for: character), "\(character)")
+        }
+        XCTAssertTrue(CharacterKeys.unsupported(in: "breaking bad 2008").isEmpty)
+    }
+
+    func testUnsupportedCharactersAreReported() {
+        XCTAssertEqual(CharacterKeys.unsupported(in: "hé"), ["é"])
+    }
+}
