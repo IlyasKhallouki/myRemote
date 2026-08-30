@@ -115,6 +115,7 @@ extension RemoteKey {
         case .playPause: 85
         case .volumeUp: 24
         case .volumeDown: 25
+        case .volumeMute: 164
         case .tvInputHDMI1: 243
         }
     }

@@ -1,7 +1,16 @@
 import Foundation
 
+/// Package identifiers on the TV. Confirm these against `adb shell pm list packages`
+/// rather than trusting the defaults — they vary by firmware.
+enum AppIDs {
+    static let youTube = "com.google.android.youtube.tv"
+    static let spotify = "com.spotify.tv.android"
+    static let miracast = "com.xiaomi.mitv.smartshare"
+}
+
 enum MacroAction: Sendable {
     case keys([RemoteKey])
+    case launch(String)
     case server
 }
 
@@ -13,10 +22,10 @@ struct Macro: Identifiable, Sendable {
     let action: MacroAction
 
     static let all: [Macro] = [
-        Macro(id: "stream-pc", label: "Stream PC", symbol: "desktopcomputer", accented: true, action: .server),
-        Macro(id: "xbox", label: "Xbox", symbol: "gamecontroller", accented: false, action: .keys([.tvInputHDMI1])),
-        Macro(id: "movie-night", label: "Movie night", symbol: "film", accented: false, action: .server),
-        Macro(id: "reset", label: "Reset", symbol: "arrow.clockwise", accented: false, action: .keys([.back, .back, .home])),
+        Macro(id: "xbox", label: "Xbox", symbol: "gamecontroller", accented: true, action: .keys([.tvInputHDMI1])),
+        Macro(id: "youtube", label: "YouTube", symbol: "play.rectangle", accented: false, action: .launch(AppIDs.youTube)),
+        Macro(id: "spotify", label: "Spotify", symbol: "music.note", accented: false, action: .launch(AppIDs.spotify)),
+        Macro(id: "miracast", label: "Miracast", symbol: "airplayvideo", accented: false, action: .launch(AppIDs.miracast)),
     ]
 
     func endpoint(base: String) -> URL? {

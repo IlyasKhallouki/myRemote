@@ -10,13 +10,14 @@ final class AndroidTVTransport: TVTransport {
     private(set) var state: TransportState = .idle
     private(set) var isOn = false
     private(set) var currentApp = ""
-    private(set) var volume: (level: UInt64, max: UInt64, muted: Bool)?
+    private(set) var volumeState: VolumeState?
 
     static let sessionPort: UInt16 = 6466
 
     private var connection: NWConnection?
     private var negotiated: RemoteFeatures = .clientSupported
     private var handshake: CheckedContinuation<Void, Error>?
+    private var deadline: Task<Void, Never>?
     private let queue = DispatchQueue(label: "app.lumind.tvremote.session")
 
     func connect(to tv: DiscoveredTV) async throws {
@@ -26,7 +27,7 @@ final class AndroidTVTransport: TVTransport {
         let identity = try Credentials.load()
         state = .connecting
 
-        let parameters = NWParameters(tls: Self.tlsOptions(identity: identity), tcp: .init())
+        let parameters = try NWParameters(tls: Self.tlsOptions(identity: identity), tcp: .init())
         let endpoint = NWEndpoint.hostPort(
             host: .init(host),
             port: .init(rawValue: tv.port ?? Self.sessionPort) ?? .init(integerLiteral: 6466)
@@ -39,6 +40,7 @@ final class AndroidTVTransport: TVTransport {
         }
         connection.start(queue: queue)
         receiveLoop(on: connection)
+        startDeadline(for: connection)
 
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
@@ -46,6 +48,20 @@ final class AndroidTVTransport: TVTransport {
             }
         } onCancel: {
             Task { @MainActor in self.finishHandshake(.failure(CancellationError())) }
+        }
+    }
+
+    private func startDeadline(for connection: NWConnection) {
+        deadline?.cancel()
+        deadline = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(12))
+            guard let self, !Task.isCancelled else { return }
+            guard case .connecting = self.state else { return }
+            if connection.currentPath?.unsatisfiedReason == .localNetworkDenied {
+                self.fail(TransportError.protocolFailure("Local network permission is denied."))
+            } else {
+                self.fail(TransportError.protocolFailure("The TV did not answer."))
+            }
         }
     }
 
@@ -64,6 +80,8 @@ final class AndroidTVTransport: TVTransport {
     }
 
     func disconnect() {
+        deadline?.cancel()
+        deadline = nil
         connection?.cancel()
         connection = nil
         finishHandshake(.failure(TransportError.notConnected))
@@ -72,13 +90,14 @@ final class AndroidTVTransport: TVTransport {
 
     // MARK: - TLS
 
-    private static func tlsOptions(identity: SecIdentity) -> NWProtocolTLS.Options {
+    private static func tlsOptions(identity: SecIdentity) throws -> NWProtocolTLS.Options {
         let options = NWProtocolTLS.Options()
         let security = options.securityProtocolOptions
 
-        if let secIdentity = sec_identity_create(identity) {
-            sec_protocol_options_set_local_identity(security, secIdentity)
+        guard let secIdentity = sec_identity_create(identity) else {
+            throw TransportError.protocolFailure("Stored credential could not be used for TLS.")
         }
+        sec_protocol_options_set_local_identity(security, secIdentity)
         sec_protocol_options_set_min_tls_protocol_version(security, .TLSv12)
 
         // The TV presents a self-signed certificate; there is no CA to validate against.
@@ -130,12 +149,14 @@ final class AndroidTVTransport: TVTransport {
         case .pingRequest(let value):
             write(RemoteCodec.pingReply(value), on: connection)
         case .start(let started):
+            deadline?.cancel()
+            deadline = nil
             isOn = started
             TransportLog.shared.append("session started, tv is_on=\(started)")
             state = .connected
             finishHandshake(.success(()))
         case .volume(let level, let max, let muted):
-            volume = (level, max, muted)
+            volumeState = VolumeState(level: level, max: max, muted: muted)
         case .currentApp(let package):
             currentApp = package
             TransportLog.shared.append("current app: \(package)")
@@ -148,10 +169,17 @@ final class AndroidTVTransport: TVTransport {
 
     private func handle(connectionState: NWConnection.State) {
         switch connectionState {
-        case .failed(let error): fail(error)
-        case .cancelled: state = .idle
-        case .waiting(let error): fail(error)
-        default: break
+        case .failed(let error):
+            fail(error)
+        case .cancelled:
+            state = .idle
+        case .waiting(let error):
+            // Transient: this is also the state while the local-network alert is on screen.
+            // Network.framework retries by itself, so never fail here.
+            let denied = connection?.currentPath?.unsatisfiedReason == .localNetworkDenied
+            TransportLog.shared.append(denied ? "waiting: local network not granted yet" : "waiting: \(error)")
+        default:
+            break
         }
     }
 

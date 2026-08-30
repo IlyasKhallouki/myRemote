@@ -37,6 +37,21 @@ final class MacroService {
         guard state(for: macro) != .inFlight else { return }
         clearTasks[macro.id]?.cancel()
 
+        if case let .launch(appID) = macro.action {
+            guard let transport else {
+                settle(macro, .failed("Not connected"))
+                return
+            }
+            states[macro.id] = .inFlight
+            do {
+                try await transport.launch(appID)
+                settle(macro, .succeeded)
+            } catch {
+                settle(macro, .failed("Not connected"))
+            }
+            return
+        }
+
         if case let .keys(keys) = macro.action {
             guard let transport else {
                 settle(macro, .failed("Not connected"))

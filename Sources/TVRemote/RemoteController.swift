@@ -13,7 +13,23 @@ final class RemoteController {
         self.discovery = discovery
     }
 
-    var mockTransport: MockTransport? { transport as? MockTransport }
+    var isLive: Bool {
+        if case .connected = transport.state { return true }
+        return false
+    }
+
+    private var cachedAddress: (host: String, port: UInt16)? {
+        get {
+            let defaults = UserDefaults.standard
+            guard let host = defaults.string(forKey: "lastKnownHost") else { return nil }
+            let port = UInt16(defaults.integer(forKey: "lastKnownPort"))
+            return (host, port == 0 ? AndroidTVTransport.sessionPort : port)
+        }
+        set {
+            UserDefaults.standard.set(newValue?.host, forKey: "lastKnownHost")
+            UserDefaults.standard.set(Int(newValue?.port ?? 0), forKey: "lastKnownPort")
+        }
+    }
 
     var statusTitle: String {
         if case let .failed(error) = transport.state {
@@ -30,15 +46,37 @@ final class RemoteController {
 
     func onForeground() {
         discovery.start()
-        Task { await connectToBestAvailable() }
+        Task { await ensureLive() }
     }
 
     func onBackground() {
         discovery.stop()
+        transport.disconnect()
+        connectedTV = nil
+    }
+
+    /// Reconnects when the socket has died, which iOS does to us on every backgrounding.
+    func ensureLive() async {
+        guard !isLive else { return }
+        connectedTV = nil
+
+        if let cached = cachedAddress,
+           let name = discovery.lastKnownServiceName {
+            let candidate = DiscoveredTV(
+                serviceName: name,
+                endpoint: discovery.endpoint(forServiceNamed: name),
+                host: cached.host,
+                port: cached.port
+            )
+            await connect(to: candidate)
+            if isLive { return }
+        }
+
+        await connectToBestAvailable()
     }
 
     func connectToBestAvailable() async {
-        guard connectedTV == nil else { return }
+        guard !isLive else { return }
 
         let remembered = discovery.lastKnownServiceName
         let winner = await withTaskGroup(of: DiscoveredTV?.self) { group in
@@ -72,17 +110,18 @@ final class RemoteController {
             try await transport.connect(to: tv)
             connectedTV = tv
             discovery.remember(tv)
+            if let host = tv.host { cachedAddress = (host, tv.port ?? AndroidTVTransport.sessionPort) }
         } catch {
             connectedTV = nil
         }
     }
 
     func send(_ key: RemoteKey) {
-        Task { try? await transport.send(key) }
+        Task { await perform(key) }
     }
 
     func perform(_ key: RemoteKey) async {
-        if connectedTV == nil { await connectToBestAvailable() }
+        await ensureLive()
         try? await transport.send(key)
     }
 

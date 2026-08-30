@@ -4,6 +4,9 @@ struct RemoteView: View {
     @State private var controller = RemoteController()
     @State private var macros = MacroService()
     @State private var haptics = Haptics()
+    #if canImport(UIKit)
+    @State private var hardwareVolume = HardwareVolume()
+    #endif
     @State private var showingPicker = false
     @State private var showingSettings = false
 
@@ -34,7 +37,7 @@ struct RemoteView: View {
 
             DPadView(send: send)
 
-            TransportRow(send: send)
+            TransportRow(send: send, volume: controller.transport.volumeState)
 
             MacroGrid(
                 macros: Macro.all,
@@ -62,7 +65,20 @@ struct RemoteView: View {
             SettingsSheet(controller: controller, macros: macros)
                 .preferredColorScheme(.dark)
         }
-        .task { haptics.prepare() }
+        .background {
+            #if canImport(UIKit)
+            VolumeAnchorView(anchor: hardwareVolume.anchor)
+                .frame(width: 1, height: 1)
+            #endif
+        }
+        .task {
+            haptics.prepare()
+            #if canImport(UIKit)
+            hardwareVolume.start { key, count in
+                for _ in 0..<count { send(key) }
+            }
+            #endif
+        }
         .onOpenURL { url in
             guard let action = DeepLink.parse(url) else { return }
             switch action {
@@ -77,7 +93,11 @@ struct RemoteView: View {
         .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
             case .active: controller.onForeground()
-            case .background: controller.onBackground()
+            case .background:
+                controller.onBackground()
+                #if canImport(UIKit)
+                hardwareVolume.stop()
+                #endif
             default: break
             }
         }

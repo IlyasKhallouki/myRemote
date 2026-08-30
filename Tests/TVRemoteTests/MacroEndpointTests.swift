@@ -11,14 +11,14 @@ final class MacroEndpointTests: XCTestCase {
     func testEndpointBuiltFromBase() {
         XCTAssertEqual(
             Macro.all[0].endpoint(base: "http://192.168.1.10:8080")?.absoluteString,
-            "http://192.168.1.10:8080/macro/stream-pc"
+            "http://192.168.1.10:8080/macro/xbox"
         )
     }
 
     func testTrailingSlashNotDoubled() {
         XCTAssertEqual(
             Macro.all[1].endpoint(base: "http://host:8080/")?.absoluteString,
-            "http://host:8080/macro/xbox"
+            "http://host:8080/macro/youtube"
         )
     }
 
@@ -29,18 +29,21 @@ final class MacroEndpointTests: XCTestCase {
         XCTAssertEqual(keys.first?.androidKeyCode, 243)
     }
 
-    func testServerMacrosStillNeedABaseURL() {
-        let streamPC = Macro.all.first { $0.id == "stream-pc" }!
-        if case .server = streamPC.action {} else { XCTFail("stream-pc should be a server macro") }
-        XCTAssertNil(streamPC.endpoint(base: ""))
+    func testAppMacrosLaunchByPackage() {
+        for (id, expected) in [("youtube", AppIDs.youTube), ("spotify", AppIDs.spotify), ("miracast", AppIDs.miracast)] {
+            guard case let .launch(package)? = Macro.all.first(where: { $0.id == id })?.action else {
+                return XCTFail("\(id) should launch an app")
+            }
+            XCTAssertEqual(package, expected)
+        }
     }
 
     func testExactlyOneAccentedMacro() {
         XCTAssertEqual(Macro.all.filter(\.accented).count, 1)
-        XCTAssertEqual(Macro.all.first(where: \.accented)?.id, "stream-pc")
+        XCTAssertEqual(Macro.all.first(where: \.accented)?.id, "xbox")
     }
 
     func testAllTenRemoteKeysExist() {
-        XCTAssertEqual(RemoteKey.allCases.count, 11)
+        XCTAssertEqual(RemoteKey.allCases.count, 12)
     }
 }

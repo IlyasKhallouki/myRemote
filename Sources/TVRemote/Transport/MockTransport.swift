@@ -4,6 +4,7 @@ import Foundation
 @Observable
 final class MockTransport: TVTransport {
     let isSimulated = true
+    private(set) var volumeState: VolumeState?
 
     private(set) var state: TransportState = .idle
 
@@ -17,6 +18,11 @@ final class MockTransport: TVTransport {
     func send(_ key: RemoteKey) async throws {
         guard case .connected = state else { throw TransportError.notConnected }
         append("send \(key.rawValue)")
+    }
+
+    func launch(_ appLink: String) async throws {
+        guard case .connected = state else { throw TransportError.notConnected }
+        append("launch \(appLink)")
     }
 
     func disconnect() {

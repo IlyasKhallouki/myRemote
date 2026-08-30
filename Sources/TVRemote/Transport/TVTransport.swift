@@ -20,6 +20,12 @@ enum TransportError: LocalizedError {
     }
 }
 
+struct VolumeState: Equatable, Sendable {
+    let level: UInt64
+    let max: UInt64
+    let muted: Bool
+}
+
 struct DiscoveredTV: Identifiable, Equatable, Sendable {
     let serviceName: String
     let endpoint: NWEndpoint
@@ -39,7 +45,9 @@ struct DiscoveredTV: Identifiable, Equatable, Sendable {
 protocol TVTransport: AnyObject {
     var state: TransportState { get }
     var isSimulated: Bool { get }
+    var volumeState: VolumeState? { get }
     func connect(to tv: DiscoveredTV) async throws
     func send(_ key: RemoteKey) async throws
+    func launch(_ appLink: String) async throws
     func disconnect()
 }

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TransportRow: View {
     let send: (RemoteKey) -> Void
+    let volume: VolumeState?
 
     @State private var firedThisGesture = false
 
@@ -18,9 +19,9 @@ struct TransportRow: View {
             .frame(height: height)
             .background(Capsule().fill(Color.surfaceRaised))
 
-            Image(systemName: "speaker.wave.2")
+            Image(systemName: volume?.muted == true ? "speaker.slash" : "speaker.wave.2")
                 .font(.system(size: 19))
-                .foregroundStyle(Color.textSecondary)
+                .foregroundStyle(volume?.muted == true ? Color.accentText : Color.textSecondary)
                 .frame(width: height, height: height)
                 .background(Capsule().fill(Color.surfaceRaised))
                 .contentShape(Capsule())
@@ -38,7 +39,7 @@ struct TransportRow: View {
                 send(direction == .up ? .volumeUp : .volumeDown)
             }
             .onEnded { _ in
-                if !firedThisGesture { send(.volumeUp) }
+                if !firedThisGesture { send(.volumeMute) }
                 firedThisGesture = false
             }
     }
