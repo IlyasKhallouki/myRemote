@@ -59,6 +59,17 @@ struct RemoteView: View {
                 .preferredColorScheme(.dark)
         }
         .task { haptics.prepare() }
+        .onOpenURL { url in
+            guard let action = DeepLink.parse(url) else { return }
+            switch action {
+            case .key(let key):
+                haptics.fire()
+                Task { await controller.perform(key) }
+            case .macro(let id):
+                guard let macro = Macro.all.first(where: { $0.id == id }) else { return }
+                Task { await macros.run(macro) }
+            }
+        }
         .onChange(of: scenePhase, initial: true) { _, phase in
             switch phase {
             case .active: controller.onForeground()

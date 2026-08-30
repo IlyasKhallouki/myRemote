@@ -78,6 +78,11 @@ final class RemoteController {
         Task { try? await transport.send(key) }
     }
 
+    func perform(_ key: RemoteKey) async {
+        if connectedTV == nil { await connectToBestAvailable() }
+        try? await transport.send(key)
+    }
+
     private func firstBrowseResult(timeout: Duration) async -> DiscoveredTV? {
         let deadline = ContinuousClock.now + timeout
         while ContinuousClock.now < deadline {
