@@ -42,7 +42,9 @@ struct DebugView: View {
         .scrollContentBackground(.hidden)
         .background(Color.background)
         .navigationTitle("Debug")
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.inline)
+        #endif
     }
 
     private var endpointDescription: String {

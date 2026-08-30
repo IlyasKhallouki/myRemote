@@ -34,7 +34,9 @@ struct TVPickerSheet: View {
             .scrollContentBackground(.hidden)
             .background(Color.background)
             .navigationTitle("Choose TV")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
         }
     }
 

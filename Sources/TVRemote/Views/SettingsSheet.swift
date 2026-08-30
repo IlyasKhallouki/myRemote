@@ -12,7 +12,9 @@ struct SettingsSheet: View {
             Form {
                 Section {
                     TextField("http://192.168.1.10:8080", text: $baseURL)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                         .autocorrectionDisabled()
                         .font(.system(size: 15))
                         .foregroundStyle(Color.textPrimary)
@@ -36,7 +38,9 @@ struct SettingsSheet: View {
             .scrollContentBackground(.hidden)
             .background(Color.background)
             .navigationTitle("Settings")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
