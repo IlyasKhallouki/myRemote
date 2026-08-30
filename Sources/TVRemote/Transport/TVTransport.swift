@@ -39,6 +39,7 @@ struct DiscoveredTV: Identifiable, Equatable, Sendable {
     }
 }
 
+@MainActor
 protocol TVTransport: AnyObject {
     var state: TransportState { get }
     func connect(to tv: DiscoveredTV) async throws
