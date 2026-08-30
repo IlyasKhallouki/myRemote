@@ -1,0 +1,3 @@
+version: 1
+bundleID: app.lumind.tvremote
+infoPath: Info.plist
