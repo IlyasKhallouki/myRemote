@@ -39,6 +39,7 @@ final class HardwareVolume {
         anchor.alpha = 0.01
         anchor.isUserInteractionEnabled = false
         isActive = true
+        TransportLog.shared.append("volume buttons armed, level \(session.outputVolume)")
         recentre()
 
         observation = session.observe(\.outputVolume, options: [.old, .new]) { [weak self] _, change in
@@ -55,6 +56,7 @@ final class HardwareVolume {
     }
 
     private func handle(old: Float, new: Float) {
+        TransportLog.shared.append("rocker \(old) -> \(new)\(isRecentring ? " (ignored, recentring)" : "")")
         guard !isRecentring else { return }
         let steps = Int(((new - old) / Self.step).rounded())
         guard steps != 0 else { return }
@@ -63,7 +65,10 @@ final class HardwareVolume {
     }
 
     private func recentre() {
-        guard let slider = anchor.subviews.compactMap({ $0 as? UISlider }).first else { return }
+        guard let slider = anchor.subviews.compactMap({ $0 as? UISlider }).first else {
+            TransportLog.shared.append("recentre FAILED: no slider in MPVolumeView")
+            return
+        }
         isRecentring = true
         slider.value = Self.centre
         slider.sendActions(for: .touchUpInside)

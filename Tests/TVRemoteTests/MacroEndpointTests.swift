@@ -22,15 +22,23 @@ final class MacroEndpointTests: XCTestCase {
         )
     }
 
-    func testXboxSwitchesToHDMI1() {
-        let xbox = Macro.all.first { $0.id == "xbox" }
-        guard case let .keys(keys)? = xbox?.action else { return XCTFail("xbox should send keys") }
-        XCTAssertEqual(keys, [.tvInputHDMI1])
-        XCTAssertEqual(keys.first?.androidKeyCode, 243)
+    func testXboxUsesTheHDMI1PassthroughURI() {
+        guard case let .launch(link)? = Macro.all.first(where: { $0.id == "xbox" })?.action else {
+            return XCTFail("xbox should launch an input")
+        }
+        XCTAssertTrue(link.hasPrefix("content://android.media.tv/passthrough/"))
+        XCTAssertTrue(link.contains("HW4"), "HW4 is hdmi_port 1 on this panel")
     }
 
-    func testAppMacrosLaunchByPackage() {
-        for (id, expected) in [("youtube", AppIDs.youTube), ("spotify", AppIDs.spotify), ("miracast", AppIDs.miracast)] {
+    func testNoMacroUsesABarePackageName() {
+        for macro in Macro.all {
+            guard case let .launch(link) = macro.action else { continue }
+            XCTAssertTrue(link.contains("://"), "\(macro.id): a bare package name does not launch")
+        }
+    }
+
+    func testAppMacrosLaunchByURI() {
+        for (id, expected) in [("xbox", AppLinks.hdmi1), ("youtube", AppLinks.youTube), ("spotify", AppLinks.spotify)] {
             guard case let .launch(package)? = Macro.all.first(where: { $0.id == id })?.action else {
                 return XCTFail("\(id) should launch an app")
             }
