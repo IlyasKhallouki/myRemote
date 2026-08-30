@@ -9,6 +9,7 @@ struct RemoteView: View {
     #endif
     @State private var showingPicker = false
     @State private var showingSettings = false
+    @State private var showingKeyboard = false
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -42,7 +43,13 @@ struct RemoteView: View {
             MacroGrid(
                 macros: Macro.all,
                 state: macros.state(for:),
-                run: { macro in Task { await macros.run(macro, using: controller.transport) } }
+                run: { macro in
+                    if case .keyboard = macro.action {
+                        showingKeyboard = true
+                    } else {
+                        Task { await macros.run(macro, using: controller.transport) }
+                    }
+                }
             )
 
             Spacer(minLength: 0)
@@ -60,6 +67,10 @@ struct RemoteView: View {
                 Task { await controller.connect(to: tv) }
             }
             .preferredColorScheme(.dark)
+        }
+        .sheet(isPresented: $showingKeyboard) {
+            KeyboardSheet(controller: controller)
+                .preferredColorScheme(.dark)
         }
         .sheet(isPresented: $showingSettings) {
             SettingsSheet(controller: controller, macros: macros)

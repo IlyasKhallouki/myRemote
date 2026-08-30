@@ -13,6 +13,7 @@ enum AppLinks {
 enum MacroAction: Sendable {
     case keys([RemoteKey])
     case launch(String)
+    case keyboard
     case server
 }
 
@@ -27,7 +28,7 @@ struct Macro: Identifiable, Sendable {
         Macro(id: "xbox", label: "Xbox", symbol: "gamecontroller", accented: true, action: .launch(AppLinks.hdmi1)),
         Macro(id: "youtube", label: "YouTube", symbol: "play.rectangle", accented: false, action: .launch(AppLinks.youTube)),
         Macro(id: "spotify", label: "Spotify", symbol: "music.note", accented: false, action: .launch(AppLinks.spotify)),
-        Macro(id: "netflix", label: "Netflix", symbol: "film", accented: false, action: .launch("nflx://")),
+        Macro(id: "keyboard", label: "Keyboard", symbol: "keyboard", accented: false, action: .keyboard),
     ]
 
     func endpoint(base: String) -> URL? {

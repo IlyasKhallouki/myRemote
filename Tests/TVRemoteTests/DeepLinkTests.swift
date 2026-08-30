@@ -23,7 +23,7 @@ final class DeepLinkTests: XCTestCase {
     func testMacroLinks() {
         XCTAssertEqual(parse("lumindtv://macro/xbox"), .macro("xbox"))
         XCTAssertEqual(parse("lumindtv://macro/YouTube"), .macro("youtube"))
-        XCTAssertEqual(parse("lumindtv://macro/Netflix"), .macro("netflix"))
+        XCTAssertEqual(parse("lumindtv://macro/keyboard"), .macro("keyboard"))
     }
 
     func testEveryRemoteKeyIsAddressable() {

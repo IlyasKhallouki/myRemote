@@ -25,6 +25,13 @@ final class MockTransport: TVTransport {
         append("launch \(appLink)")
     }
 
+    var canType: Bool { true }
+
+    func sendText(_ text: String) async throws {
+        guard case .connected = state else { throw TransportError.notConnected }
+        append("text \"\(text)\"")
+    }
+
     func disconnect() {
         append("disconnect")
         state = .idle

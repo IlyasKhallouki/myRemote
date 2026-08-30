@@ -87,3 +87,22 @@ final class RemoteCodecTests: XCTestCase {
         XCTAssertNil(Protobuf.decodeVarint([0x80, 0x80], at: 0))
     }
 }
+
+extension RemoteCodecTests {
+    func testTextInputMatchesGoldenBytes() {
+        XCTAssertEqual(RemoteCodec.textInput("hello", imeCounter: 7, fieldCounter: 3), [
+            0xAA, 0x01, 0x15, 0x08, 0x07, 0x10, 0x03, 0x1A, 0x0F, 0x08, 0x01, 0x12,
+            0x0B, 0x08, 0x04, 0x10, 0x04, 0x1A, 0x05, 0x68, 0x65, 0x6C, 0x6C, 0x6F,
+        ])
+    }
+
+    func testDecodesImeCounters() {
+        XCTAssertEqual(RemoteCodec.parse([0xAA, 0x01, 0x04, 0x08, 0x07, 0x10, 0x03]),
+                       .imeCounters(ime: 7, field: 3))
+    }
+
+    func testSingleCharacterDoesNotUnderflowTheCaret() {
+        let bytes = RemoteCodec.textInput("a", imeCounter: 1, fieldCounter: 1)
+        XCTAssertFalse(bytes.isEmpty)
+    }
+}

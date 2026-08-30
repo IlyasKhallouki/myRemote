@@ -37,6 +37,8 @@ final class MacroService {
         guard state(for: macro) != .inFlight else { return }
         clearTasks[macro.id]?.cancel()
 
+        if case .keyboard = macro.action { return }
+
         if case let .launch(appID) = macro.action {
             guard let transport else {
                 settle(macro, .failed("Not connected"))

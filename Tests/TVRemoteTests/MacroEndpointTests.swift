@@ -30,6 +30,12 @@ final class MacroEndpointTests: XCTestCase {
         XCTAssertTrue(link.contains("HW4"), "HW4 is hdmi_port 1 on this panel")
     }
 
+    func testKeyboardTileIsNotAServerMacro() {
+        guard case .keyboard? = Macro.all.first(where: { $0.id == "keyboard" })?.action else {
+            return XCTFail("keyboard tile should open the keyboard")
+        }
+    }
+
     func testNoMacroUsesABarePackageName() {
         for macro in Macro.all {
             guard case let .launch(link) = macro.action else { continue }

@@ -49,5 +49,7 @@ protocol TVTransport: AnyObject {
     func connect(to tv: DiscoveredTV) async throws
     func send(_ key: RemoteKey) async throws
     func launch(_ appLink: String) async throws
+    func sendText(_ text: String) async throws
+    var canType: Bool { get }
     func disconnect()
 }

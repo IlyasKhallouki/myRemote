@@ -21,6 +21,7 @@ enum IncomingMessage: Equatable {
     case pingRequest(value: UInt64)
     case volume(level: UInt64, max: UInt64, muted: Bool)
     case currentApp(String)
+    case imeCounters(ime: UInt64, field: UInt64)
     case error(String)
     case unrecognised
 }
@@ -34,6 +35,7 @@ enum RemoteCodec {
         static let pingResponse = 9
         static let keyInject = 10
         static let imeKeyInject = 20
+        static let imeBatchEdit = 21
         static let start = 40
         static let setVolumeLevel = 50
         static let appLinkLaunch = 90
@@ -63,6 +65,9 @@ enum RemoteCodec {
                 max: volume[6]?.uint ?? 0,
                 muted: volume[8]?.bool ?? false
             )
+        }
+        if let batch = message[Field.imeBatchEdit]?.message {
+            return .imeCounters(ime: batch[1]?.uint ?? 0, field: batch[2]?.uint ?? 0)
         }
         if let ime = message[Field.imeKeyInject]?.message {
             let package = ime[1]?.message?[12]?.string ?? ""
@@ -95,6 +100,20 @@ enum RemoteCodec {
     static func keyInject(code: UInt64, direction: UInt64 = shortPress) -> [UInt8] {
         let inject = Protobuf.varintField(1, code) + Protobuf.varintField(2, direction)
         return Protobuf.bytesField(Field.keyInject, inject)
+    }
+
+    /// Text injection. The counters must be the ones the TV last pushed in its own
+    /// batch edit — they identify the focused field, and a stale pair is ignored.
+    static func textInput(_ text: String, imeCounter: UInt64, fieldCounter: UInt64) -> [UInt8] {
+        let caret = UInt64(max(text.count - 1, 0))
+        let imeObject = Protobuf.varintField(1, caret)
+            + Protobuf.varintField(2, caret)
+            + Protobuf.stringField(3, text)
+        let editInfo = Protobuf.varintField(1, 1) + Protobuf.bytesField(2, imeObject)
+        let batch = Protobuf.varintField(1, imeCounter)
+            + Protobuf.varintField(2, fieldCounter)
+            + Protobuf.bytesField(3, editInfo)
+        return Protobuf.bytesField(Field.imeBatchEdit, batch)
     }
 
     static func launchApp(_ link: String) -> [UInt8] {

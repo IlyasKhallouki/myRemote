@@ -11,6 +11,8 @@ final class AndroidTVTransport: TVTransport {
     private(set) var isOn = false
     private(set) var currentApp = ""
     private(set) var volumeState: VolumeState?
+    private var imeCounter: UInt64?
+    private var fieldCounter: UInt64?
 
     static let sessionPort: UInt16 = 6466
 
@@ -22,6 +24,8 @@ final class AndroidTVTransport: TVTransport {
 
     func connect(to tv: DiscoveredTV) async throws {
         disconnect()
+        imeCounter = nil
+        fieldCounter = nil
         guard let host = tv.host else { throw TransportError.notConnected }
 
         let identity = try Credentials.load()
@@ -72,6 +76,18 @@ final class AndroidTVTransport: TVTransport {
         }
         TransportLog.shared.append("send \(key.rawValue) (code \(key.androidKeyCode))")
         write(RemoteCodec.keyInject(code: key.androidKeyCode), on: connection)
+    }
+
+    /// True once the TV has told us which field has focus. Typing before that is ignored.
+    var canType: Bool { imeCounter != nil && fieldCounter != nil }
+
+    func sendText(_ text: String) async throws {
+        guard case .connected = state, let connection else { throw TransportError.notConnected }
+        guard let imeCounter, let fieldCounter else {
+            throw TransportError.protocolFailure("Put the cursor in a text box on the TV first.")
+        }
+        TransportLog.shared.append("text \"\(text)\"")
+        write(RemoteCodec.textInput(text, imeCounter: imeCounter, fieldCounter: fieldCounter), on: connection)
     }
 
     func launch(_ appLink: String) async throws {
@@ -157,6 +173,10 @@ final class AndroidTVTransport: TVTransport {
             finishHandshake(.success(()))
         case .volume(let level, let max, let muted):
             volumeState = VolumeState(level: level, max: max, muted: muted)
+        case .imeCounters(let ime, let field):
+            imeCounter = ime
+            fieldCounter = field
+            TransportLog.shared.append("ime ready (ime=\(ime) field=\(field))")
         case .currentApp(let package):
             currentApp = package
             TransportLog.shared.append("current app: \(package)")
