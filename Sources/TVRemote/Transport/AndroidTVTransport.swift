@@ -1,8 +1,6 @@
-// Milestone 2 fills this in by porting the pairing and session protocol from
-// androidtvremote2: pairing on port 6467, session on 6466, self-signed client
-// certificate, length-delimited protobuf framing. No speculative wire code here.
-
 import Foundation
+import Network
+import Security
 
 @MainActor
 @Observable
@@ -10,14 +8,178 @@ final class AndroidTVTransport: TVTransport {
     let isSimulated = false
 
     private(set) var state: TransportState = .idle
+    private(set) var isOn = false
+    private(set) var currentApp = ""
+    private(set) var volume: (level: UInt64, max: UInt64, muted: Bool)?
+
+    static let sessionPort: UInt16 = 6466
+
+    private var connection: NWConnection?
+    private var negotiated: RemoteFeatures = .clientSupported
+    private var handshake: CheckedContinuation<Void, Error>?
+    private let queue = DispatchQueue(label: "app.lumind.tvremote.session")
 
     func connect(to tv: DiscoveredTV) async throws {
-        throw TransportError.notImplemented
+        disconnect()
+        guard let host = tv.host else { throw TransportError.notConnected }
+
+        let identity = try Credentials.load()
+        state = .connecting
+
+        let parameters = NWParameters(tls: Self.tlsOptions(identity: identity), tcp: .init())
+        let endpoint = NWEndpoint.hostPort(
+            host: .init(host),
+            port: .init(rawValue: tv.port ?? Self.sessionPort) ?? .init(integerLiteral: 6466)
+        )
+        let connection = NWConnection(to: endpoint, using: parameters)
+        self.connection = connection
+
+        connection.stateUpdateHandler = { [weak self] state in
+            Task { @MainActor in self?.handle(connectionState: state) }
+        }
+        connection.start(queue: queue)
+        receiveLoop(on: connection)
+
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                self.handshake = continuation
+            }
+        } onCancel: {
+            Task { @MainActor in self.finishHandshake(.failure(CancellationError())) }
+        }
     }
 
     func send(_ key: RemoteKey) async throws {
-        throw TransportError.notImplemented
+        guard case .connected = state, let connection else { throw TransportError.notConnected }
+        write(RemoteCodec.keyInject(code: key.androidKeyCode), on: connection)
     }
 
-    func disconnect() {}
+    func launch(_ appLink: String) async throws {
+        guard case .connected = state, let connection else { throw TransportError.notConnected }
+        write(RemoteCodec.launchApp(appLink), on: connection)
+    }
+
+    func disconnect() {
+        connection?.cancel()
+        connection = nil
+        finishHandshake(.failure(TransportError.notConnected))
+        state = .idle
+    }
+
+    // MARK: - TLS
+
+    private static func tlsOptions(identity: SecIdentity) -> NWProtocolTLS.Options {
+        let options = NWProtocolTLS.Options()
+        let security = options.securityProtocolOptions
+
+        if let secIdentity = sec_identity_create(identity) {
+            sec_protocol_options_set_local_identity(security, secIdentity)
+        }
+        sec_protocol_options_set_min_tls_protocol_version(security, .TLSv12)
+
+        // The TV presents a self-signed certificate; there is no CA to validate against.
+        sec_protocol_options_set_verify_block(security, { _, _, complete in
+            complete(true)
+        }, DispatchQueue(label: "app.lumind.tvremote.tls"))
+
+        return options
+    }
+
+    // MARK: - Framing
+
+    private func receiveLoop(on connection: NWConnection) {
+        let buffer = FrameBuffer()
+        func step() {
+            connection.receive(minimumIncompleteLength: 1, maximumLength: 16 * 1024) { data, _, isComplete, error in
+                if let data, !data.isEmpty {
+                    let frames = buffer.append(Array(data))
+                    Task { @MainActor in
+                        for frame in frames { self.handle(frame: frame) }
+                    }
+                }
+                if error != nil || isComplete {
+                    Task { @MainActor in self.fail(error ?? TransportError.notConnected) }
+                    return
+                }
+                step()
+            }
+        }
+        step()
+    }
+
+    private func write(_ payload: [UInt8], on connection: NWConnection) {
+        let framed = Protobuf.lengthPrefixed(payload)
+        connection.send(content: Data(framed), completion: .contentProcessed { _ in })
+    }
+
+    // MARK: - Session state machine
+
+    private func handle(frame: [UInt8]) {
+        guard let connection, let message = RemoteCodec.parse(frame) else { return }
+
+        switch message {
+        case .configure(let serverFeatures):
+            negotiated = RemoteFeatures(rawValue: RemoteFeatures.clientSupported.rawValue & serverFeatures.rawValue)
+            write(RemoteCodec.configureReply(features: negotiated), on: connection)
+        case .setActive:
+            write(RemoteCodec.setActiveReply(features: negotiated), on: connection)
+        case .pingRequest(let value):
+            write(RemoteCodec.pingReply(value), on: connection)
+        case .start(let started):
+            isOn = started
+            state = .connected
+            finishHandshake(.success(()))
+        case .volume(let level, let max, let muted):
+            volume = (level, max, muted)
+        case .currentApp(let package):
+            currentApp = package
+        case .error(let text):
+            fail(TransportError.protocolFailure(text))
+        case .unrecognised:
+            break
+        }
+    }
+
+    private func handle(connectionState: NWConnection.State) {
+        switch connectionState {
+        case .failed(let error): fail(error)
+        case .cancelled: state = .idle
+        case .waiting(let error): fail(error)
+        default: break
+        }
+    }
+
+    private func fail(_ error: Error) {
+        state = .failed(error)
+        finishHandshake(.failure(error))
+        connection?.cancel()
+        connection = nil
+    }
+
+    private func finishHandshake(_ result: Result<Void, Error>) {
+        guard let handshake else { return }
+        self.handshake = nil
+        handshake.resume(with: result)
+    }
+}
+
+private final class FrameBuffer: @unchecked Sendable {
+    private var bytes: [UInt8] = []
+    private let lock = NSLock()
+
+    func append(_ incoming: [UInt8]) -> [[UInt8]] {
+        lock.lock()
+        defer { lock.unlock() }
+        bytes += incoming
+
+        var frames: [[UInt8]] = []
+        while true {
+            guard let (length, width) = Protobuf.decodeVarint(bytes, at: 0) else { break }
+            let end = width + Int(length)
+            guard bytes.count >= end else { break }
+            frames.append(Array(bytes[width..<end]))
+            bytes.removeFirst(end)
+        }
+        return frames
+    }
 }

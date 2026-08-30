@@ -9,13 +9,13 @@ enum TransportState {
 }
 
 enum TransportError: LocalizedError {
-    case notImplemented
     case notConnected
+    case protocolFailure(String)
 
     var errorDescription: String? {
         switch self {
-        case .notImplemented: "The Android TV Remote protocol is not implemented yet."
         case .notConnected: "Not connected to a TV."
+        case .protocolFailure(let message): message
         }
     }
 }

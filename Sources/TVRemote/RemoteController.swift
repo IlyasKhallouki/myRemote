@@ -8,7 +8,7 @@ final class RemoteController {
 
     private(set) var connectedTV: DiscoveredTV?
 
-    init(transport: TVTransport = MockTransport(), discovery: DiscoveryService = DiscoveryService()) {
+    init(transport: TVTransport = AndroidTVTransport(), discovery: DiscoveryService = DiscoveryService()) {
         self.transport = transport
         self.discovery = discovery
     }
@@ -16,6 +16,9 @@ final class RemoteController {
     var mockTransport: MockTransport? { transport as? MockTransport }
 
     var statusTitle: String {
+        if case let .failed(error) = transport.state {
+            return (error as? LocalizedError)?.errorDescription ?? "Connection failed"
+        }
         if let connectedTV { return connectedTV.serviceName }
         switch discovery.state {
         case .permissionDenied: return "Local network denied"

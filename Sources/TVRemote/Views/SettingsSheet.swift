@@ -5,6 +5,8 @@ struct SettingsSheet: View {
     let macros: MacroService
 
     @State private var baseURL: String = ""
+    @State private var credential: String = ""
+    @State private var credentialError: String?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -23,6 +25,39 @@ struct SettingsSheet: View {
                         .foregroundStyle(Color.textMuted)
                 } footer: {
                     Text("Leave empty to disable macros.")
+                        .foregroundStyle(Color.textMuted)
+                }
+                .listRowBackground(Color.surfaceRaised)
+
+                Section {
+                    if Credentials.isStored {
+                        HStack {
+                            Text("Paired")
+                                .font(.system(size: 15))
+                                .foregroundStyle(Color.textPrimary)
+                            Spacer()
+                            Button("Remove") {
+                                Credentials.remove()
+                                credential = ""
+                            }
+                            .foregroundStyle(.red)
+                        }
+                    } else {
+                        TextField("base64 of client.p12", text: $credential, axis: .vertical)
+                            .lineLimit(3)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Color.textPrimary)
+                        Button("Import credential") { importCredential() }
+                            .foregroundStyle(Color.accentText)
+                            .disabled(credential.isEmpty)
+                    }
+                    if let credentialError {
+                        Text(credentialError)
+                            .font(.system(size: 12))
+                            .foregroundStyle(.red)
+                    }
+                } header: {
+                    Text("TV credential")
                         .foregroundStyle(Color.textMuted)
                 }
                 .listRowBackground(Color.surfaceRaised)
@@ -51,5 +86,20 @@ struct SettingsSheet: View {
             }
         }
         .onAppear { baseURL = macros.baseURL }
+    }
+
+    private func importCredential() {
+        credentialError = nil
+        let cleaned = credential.filter { !$0.isWhitespace }
+        guard let data = Data(base64Encoded: cleaned) else {
+            credentialError = "Not valid base64."
+            return
+        }
+        do {
+            try Credentials.store(data)
+            credential = ""
+        } catch {
+            credentialError = (error as? LocalizedError)?.errorDescription ?? "\(error)"
+        }
     }
 }
