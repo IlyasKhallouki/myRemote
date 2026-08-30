@@ -38,7 +38,7 @@ final class RemoteController {
         guard connectedTV == nil else { return }
 
         let remembered = discovery.lastKnownServiceName
-        let winner = await withTaskGroup(returning: DiscoveredTV?.self) { group in
+        let winner = await withTaskGroup(of: DiscoveredTV?.self) { group in
             if let remembered {
                 group.addTask { [discovery] in
                     let endpoint = await discovery.endpoint(forServiceNamed: remembered)

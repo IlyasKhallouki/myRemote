@@ -79,9 +79,21 @@ final class DiscoveryService {
 
     func resolve(_ endpoint: NWEndpoint, timeout: Duration = .seconds(1)) async -> DiscoveredTV? {
         guard let name = Self.serviceName(from: endpoint) else { return nil }
-        let connection = NWConnection(to: endpoint, using: .tcp)
+        guard let resolved = await Self.resolveAddress(endpoint: endpoint, queue: queue, timeout: timeout) else {
+            return nil
+        }
+        return DiscoveredTV(serviceName: name, endpoint: endpoint, host: resolved.host, port: resolved.port)
+    }
 
-        let resolved: (host: String, port: UInt16)? = await withTaskGroup(returning: (host: String, port: UInt16)?.self) { group in
+    private static func resolveAddress(
+        endpoint: NWEndpoint,
+        queue: DispatchQueue,
+        timeout: Duration
+    ) async -> (host: String, port: UInt16)? {
+        let connection = NWConnection(to: endpoint, using: .tcp)
+        defer { connection.cancel() }
+
+        return await withTaskGroup(of: (host: String, port: UInt16)?.self) { group in
             group.addTask {
                 await withCheckedContinuation { continuation in
                     let box = ResumeOnce(continuation)
@@ -95,7 +107,7 @@ final class DiscoveryService {
                             break
                         }
                     }
-                    connection.start(queue: self.queue)
+                    connection.start(queue: queue)
                 }
             }
             group.addTask {
@@ -106,10 +118,6 @@ final class DiscoveryService {
             group.cancelAll()
             return first
         }
-
-        connection.cancel()
-        guard let resolved else { return nil }
-        return DiscoveredTV(serviceName: name, endpoint: endpoint, host: resolved.host, port: resolved.port)
     }
 
     private static func remoteAddress(of connection: NWConnection) -> (host: String, port: UInt16)? {
