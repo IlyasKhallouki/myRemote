@@ -10,6 +10,7 @@ extension Color {
     static let accentWash = Color(hex: 0x12312A)
     static let accentText = Color(hex: 0x5DCAA5)
     static let statusOK = Color(hex: 0x3ECF8E)
+    static let statusSimulated = Color(hex: 0xE0A33E)
     static let hairline = Color.white.opacity(0.08)
 
     private init(hex: UInt32) {

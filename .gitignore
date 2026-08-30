@@ -9,3 +9,5 @@ DerivedData/
 
 /xtool
 *.ipa
+
+/.protocol-probe/

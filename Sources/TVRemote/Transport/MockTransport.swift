@@ -9,6 +9,8 @@ struct TransportLogEntry: Identifiable {
 @MainActor
 @Observable
 final class MockTransport: TVTransport {
+    let isSimulated = true
+
     private(set) var state: TransportState = .idle
     private(set) var log: [TransportLogEntry] = []
 

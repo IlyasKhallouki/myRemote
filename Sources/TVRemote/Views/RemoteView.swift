@@ -13,7 +13,11 @@ struct RemoteView: View {
         VStack(spacing: 20) {
             HStack {
                 Spacer()
-                StatusPill(title: controller.statusTitle, state: controller.transport.state)
+                StatusPill(
+                    title: controller.statusTitle,
+                    state: controller.transport.state,
+                    simulated: controller.transport.isSimulated
+                )
                     .onTapGesture { showingPicker = true }
                 Spacer()
             }

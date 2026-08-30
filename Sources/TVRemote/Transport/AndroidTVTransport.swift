@@ -7,6 +7,8 @@ import Foundation
 @MainActor
 @Observable
 final class AndroidTVTransport: TVTransport {
+    let isSimulated = false
+
     private(set) var state: TransportState = .idle
 
     func connect(to tv: DiscoveredTV) async throws {
