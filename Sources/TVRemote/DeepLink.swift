@@ -6,7 +6,7 @@ enum DeepLinkAction: Equatable {
 }
 
 enum DeepLink {
-    static let scheme = "tvremote"
+    static let scheme = "lumindtv"
 
     static func parse(_ url: URL) -> DeepLinkAction? {
         guard url.scheme?.lowercased() == scheme else { return nil }

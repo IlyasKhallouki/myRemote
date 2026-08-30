@@ -9,7 +9,7 @@
 			<string>app.lumind.tvremote</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>tvremote</string>
+				<string>lumindtv</string>
 			</array>
 		</dict>
 	</array>

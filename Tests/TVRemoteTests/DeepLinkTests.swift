@@ -9,45 +9,46 @@ final class DeepLinkTests: XCTestCase {
     }
 
     func testKeyLinks() {
-        XCTAssertEqual(parse("tvremote://key/playPause"), .key(.playPause))
-        XCTAssertEqual(parse("tvremote://key/ok"), .key(.ok))
-        XCTAssertEqual(parse("tvremote://key/volumeUp"), .key(.volumeUp))
+        XCTAssertEqual(parse("lumindtv://key/playPause"), .key(.playPause))
+        XCTAssertEqual(parse("lumindtv://key/ok"), .key(.ok))
+        XCTAssertEqual(parse("lumindtv://key/volumeUp"), .key(.volumeUp))
     }
 
     func testKeyNamesAreForgiving() {
-        XCTAssertEqual(parse("tvremote://key/play-pause"), .key(.playPause))
-        XCTAssertEqual(parse("tvremote://key/PLAY_PAUSE"), .key(.playPause))
-        XCTAssertEqual(parse("tvremote://key/Volume%20Up"), .key(.volumeUp))
+        XCTAssertEqual(parse("lumindtv://key/play-pause"), .key(.playPause))
+        XCTAssertEqual(parse("lumindtv://key/PLAY_PAUSE"), .key(.playPause))
+        XCTAssertEqual(parse("lumindtv://key/Volume%20Up"), .key(.volumeUp))
     }
 
     func testMacroLinks() {
-        XCTAssertEqual(parse("tvremote://macro/stream-pc"), .macro("stream-pc"))
-        XCTAssertEqual(parse("tvremote://macro/movienight"), .macro("movie-night"))
-        XCTAssertEqual(parse("tvremote://macro/Xbox"), .macro("xbox"))
+        XCTAssertEqual(parse("lumindtv://macro/stream-pc"), .macro("stream-pc"))
+        XCTAssertEqual(parse("lumindtv://macro/movienight"), .macro("movie-night"))
+        XCTAssertEqual(parse("lumindtv://macro/Xbox"), .macro("xbox"))
     }
 
     func testEveryRemoteKeyIsAddressable() {
         for key in RemoteKey.allCases {
-            XCTAssertEqual(parse("tvremote://key/\(key.rawValue)"), .key(key), "\(key.rawValue) unreachable")
+            XCTAssertEqual(parse("lumindtv://key/\(key.rawValue)"), .key(key), "\(key.rawValue) unreachable")
         }
     }
 
     func testEveryMacroIsAddressable() {
         for macro in Macro.all {
-            XCTAssertEqual(parse("tvremote://macro/\(macro.id)"), .macro(macro.id), "\(macro.id) unreachable")
+            XCTAssertEqual(parse("lumindtv://macro/\(macro.id)"), .macro(macro.id), "\(macro.id) unreachable")
         }
     }
 
     func testRejectsUnknownAndMalformed() {
-        XCTAssertNil(parse("tvremote://key/frobnicate"))
-        XCTAssertNil(parse("tvremote://macro/nope"))
-        XCTAssertNil(parse("tvremote://key"))
-        XCTAssertNil(parse("tvremote://"))
+        XCTAssertNil(parse("lumindtv://key/frobnicate"))
+        XCTAssertNil(parse("lumindtv://macro/nope"))
+        XCTAssertNil(parse("lumindtv://key"))
+        XCTAssertNil(parse("lumindtv://"))
         XCTAssertNil(parse("otherapp://key/ok"))
+        XCTAssertNil(parse("tvremote://key/ok"))
         XCTAssertNil(parse("https://example.com/key/ok"))
     }
 
     func testSchemeIsCaseInsensitive() {
-        XCTAssertEqual(parse("TVRemote://key/home"), .key(.home))
+        XCTAssertEqual(parse("LumindTV://key/home"), .key(.home))
     }
 }
