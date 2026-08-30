@@ -85,7 +85,7 @@ final class DiscoveryService {
         return DiscoveredTV(serviceName: name, endpoint: endpoint, host: resolved.host, port: resolved.port)
     }
 
-    private static func resolveAddress(
+    nonisolated private static func resolveAddress(
         endpoint: NWEndpoint,
         queue: DispatchQueue,
         timeout: Duration
@@ -120,13 +120,13 @@ final class DiscoveryService {
         }
     }
 
-    private static func remoteAddress(of connection: NWConnection) -> (host: String, port: UInt16)? {
+    nonisolated private static func remoteAddress(of connection: NWConnection) -> (host: String, port: UInt16)? {
         guard let remote = connection.currentPath?.remoteEndpoint,
               case let .hostPort(host, port) = remote else { return nil }
         return (Self.describe(host), port.rawValue)
     }
 
-    private static func describe(_ host: NWEndpoint.Host) -> String {
+    nonisolated private static func describe(_ host: NWEndpoint.Host) -> String {
         switch host {
         case .name(let name, _): name
         case .ipv4(let address): "\(address)".components(separatedBy: "%").first ?? "\(address)"
