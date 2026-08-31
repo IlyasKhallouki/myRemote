@@ -194,7 +194,7 @@ struct SettingsSheet: View {
 
     private var addressSection: some View {
         Section {
-            TextField("192.168.11.104", text: Binding(
+            TextField("192.168.1.20", text: Binding(
                 get: { prefs.manualHost },
                 set: { prefs.manualHost = $0 }
             ))
