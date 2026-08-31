@@ -1,5 +1,6 @@
 import Foundation
 import XCTest
+import TVRemoteCore
 @testable import TVRemote
 
 final class RemoteCodecTests: XCTestCase {

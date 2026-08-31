@@ -1,7 +1,9 @@
 import Network
 import XCTest
+import TVRemoteCore
 @testable import TVRemote
 
+@MainActor
 final class DiscoveryServiceTests: XCTestCase {
     func testServiceNameExtractedFromServiceEndpoint() {
         let endpoint = NWEndpoint.service(

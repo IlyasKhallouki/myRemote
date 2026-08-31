@@ -112,6 +112,15 @@ enum Protobuf {
         varintField(field, value ? 1 : 0)
     }
 
+    /// A varint field, omitted entirely when the value is zero.
+    ///
+    /// proto3 does not serialise default-valued scalars, so a real encoder emits
+    /// nothing for `0`. The TV distinguishes an absent field from one explicitly
+    /// set to zero, so writing the zero produces a message it silently ignores.
+    static func varintFieldSkippingZero(_ field: Int, _ value: UInt64) -> [UInt8] {
+        value == 0 ? [] : varintField(field, value)
+    }
+
     static func bytesField(_ field: Int, _ payload: [UInt8]) -> [UInt8] {
         varint(UInt64(field) << 3 | 2) + varint(UInt64(payload.count)) + payload
     }

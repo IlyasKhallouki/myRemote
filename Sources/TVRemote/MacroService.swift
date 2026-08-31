@@ -1,4 +1,5 @@
 import Foundation
+import TVRemoteCore
 
 enum MacroState: Equatable {
     case idle

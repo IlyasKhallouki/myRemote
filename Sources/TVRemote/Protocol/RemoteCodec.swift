@@ -1,4 +1,5 @@
 import Foundation
+import TVRemoteCore
 
 struct RemoteFeatures: OptionSet, Sendable {
     let rawValue: UInt64
@@ -106,14 +107,21 @@ enum RemoteCodec {
     /// batch edit — they identify the focused field, and a stale pair is ignored.
     static func textInput(_ text: String, imeCounter: UInt64, fieldCounter: UInt64) -> [UInt8] {
         let caret = UInt64(max(text.count - 1, 0))
-        let imeObject = Protobuf.varintField(1, caret)
-            + Protobuf.varintField(2, caret)
+        let imeObject = Protobuf.varintFieldSkippingZero(1, caret)
+            + Protobuf.varintFieldSkippingZero(2, caret)
             + Protobuf.stringField(3, text)
         let editInfo = Protobuf.varintField(1, 1) + Protobuf.bytesField(2, imeObject)
-        let batch = Protobuf.varintField(1, imeCounter)
-            + Protobuf.varintField(2, fieldCounter)
+        let batch = Protobuf.varintFieldSkippingZero(1, imeCounter)
+            + Protobuf.varintFieldSkippingZero(2, fieldCounter)
             + Protobuf.bytesField(3, editInfo)
         return Protobuf.bytesField(Field.imeBatchEdit, batch)
+    }
+
+    /// Absolute volume. Unverified: the TV *reports* this message with the level
+    /// in field 7, and this mirrors that shape back at it. Whether the panel
+    /// accepts it as a command is what Tools/probe-volume-and-power.py answers.
+    static func setVolume(level: UInt64) -> [UInt8] {
+        Protobuf.bytesField(Field.setVolumeLevel, Protobuf.varintField(7, level))
     }
 
     static func launchApp(_ link: String) -> [UInt8] {
@@ -136,6 +144,13 @@ extension RemoteKey {
         case .volumeDown: 25
         case .volumeMute: 164
         case .tvInputHDMI1: 243
+        // Standard Android media keycodes. Media apps on the TV handle these
+        // themselves, which is what makes the contextual column worth having.
+        case .previous: 88
+        case .next: 87
+        case .rewind: 89
+        case .fastForward: 90
+        case .power: 26
         }
     }
 }

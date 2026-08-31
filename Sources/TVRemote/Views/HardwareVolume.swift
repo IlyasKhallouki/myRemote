@@ -1,3 +1,4 @@
+import TVRemoteCore
 #if canImport(UIKit)
 import AVFoundation
 import MediaPlayer
@@ -42,7 +43,7 @@ final class HardwareVolume {
         TransportLog.shared.append("volume buttons armed, level \(session.outputVolume)")
         recentre()
 
-        observation = session.observe(\.outputVolume, options: [.old, .new]) { [weak self] _, change in
+        observation = session.observe(\.outputVolume, options: [.old, .new]) { @Sendable [weak self] _, change in
             guard let old = change.oldValue, let new = change.newValue else { return }
             Task { @MainActor in self?.handle(old: old, new: new) }
         }
@@ -52,7 +53,14 @@ final class HardwareVolume {
         observation?.invalidate()
         observation = nil
         isActive = false
-        try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+
+        // The keep-alive owns the audio session while it holds the process open.
+        // Deactivating here would pull it out from under it on every
+        // backgrounding — which is exactly when the session needs to survive.
+        // And never .notifyOthersOnDeactivation: that flag tells Spotify to
+        // resume music you had paused.
+        guard !BackgroundPresence.shared.isRunning else { return }
+        try? AVAudioSession.sharedInstance().setActive(false)
     }
 
     private func handle(old: Float, new: Float) {
@@ -64,9 +72,18 @@ final class HardwareVolume {
         recentre()
     }
 
-    private func recentre() {
-        guard let slider = anchor.subviews.compactMap({ $0 as? UISlider }).first else {
-            TransportLog.shared.append("recentre FAILED: no slider in MPVolumeView")
+    private func recentre(retry: Int = 3) {
+        guard let slider = Self.slider(in: anchor) else {
+            // The slider does not exist until MPVolumeView has laid out, which
+            // has not happened yet when we arm. Wait a run loop and look again.
+            guard retry > 0 else {
+                TransportLog.shared.append("recentre FAILED: no slider in MPVolumeView")
+                return
+            }
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(200))
+                self.recentre(retry: retry - 1)
+            }
             return
         }
         isRecentring = true
@@ -76,6 +93,18 @@ final class HardwareVolume {
             try? await Task.sleep(for: .milliseconds(150))
             self.isRecentring = false
         }
+    }
+}
+
+extension HardwareVolume {
+    /// Depth-first: the slider is nested rather than a direct subview on current
+    /// iOS, so the old direct-subview scan never found it.
+    static func slider(in view: UIView) -> UISlider? {
+        for subview in view.subviews {
+            if let slider = subview as? UISlider { return slider }
+            if let found = slider(in: subview) { return found }
+        }
+        return nil
     }
 }
 

@@ -1,22 +1,37 @@
 import Foundation
+import Network
+import TVRemoteCore
 
 @MainActor
 @Observable
 final class RemoteController {
+    /// One controller per process. The Lock Screen intents run in this same
+    /// process but outside any view, so they need a well-known instance to reach —
+    /// and it has to be the same socket the UI is using.
+    static let shared = RemoteController()
+
     let discovery: DiscoveryService
     let transport: TVTransport
 
     private(set) var connectedTV: DiscoveredTV?
+
+    private var connecting: Task<Void, Never>?
+
+    /// Set while the Lock Screen remote is up. Backgrounding must not tear the
+    /// session down then: the whole point is that the socket survives.
+    var holdsConnection = false
+
+    /// Why the last send failed, surfaced on the Lock Screen where there is no
+    /// other way to tell the user that nothing happened.
+    private(set) var lastFailure: String?
 
     init(transport: TVTransport = AndroidTVTransport(), discovery: DiscoveryService = DiscoveryService()) {
         self.transport = transport
         self.discovery = discovery
     }
 
-    var isLive: Bool {
-        if case .connected = transport.state { return true }
-        return false
-    }
+    /// Asks the socket, not our own last belief — see `TVTransport.isHealthy`.
+    var isLive: Bool { transport.isHealthy }
 
     private var cachedAddress: (host: String, port: UInt16)? {
         get {
@@ -32,6 +47,7 @@ final class RemoteController {
     }
 
     var statusTitle: String {
+        if !NetworkReachability.shared.hasLocalNetwork { return "Not on Wi-Fi" }
         if case let .failed(error) = transport.state {
             return (error as? LocalizedError)?.errorDescription ?? "Connection failed"
         }
@@ -45,20 +61,59 @@ final class RemoteController {
     }
 
     func onForeground() {
+        NetworkReachability.shared.start()
         discovery.start()
         Task { await ensureLive() }
     }
 
     func onBackground() {
         discovery.stop()
+        guard !holdsConnection else { return }
         transport.disconnect()
         connectedTV = nil
     }
 
     /// Reconnects when the socket has died, which iOS does to us on every backgrounding.
+    ///
+    /// Serialised: the automation loop and the UI both call this, and two
+    /// handshakes in flight at once fight over a single continuation and tear
+    /// down each other's connection.
     func ensureLive() async {
         guard !isLive else { return }
+        if let connecting {
+            await connecting.value
+            return
+        }
+        let attempt = Task { @MainActor in await self.attemptConnection() }
+        connecting = attempt
+        await attempt.value
+        connecting = nil
+    }
+
+    private func attemptConnection() async {
         connectedTV = nil
+
+        // Nothing on cellular can reach the TV. Failing immediately beats a
+        // twelve-second timeout that then blames the TV for not answering.
+        guard NetworkReachability.shared.hasLocalNetwork else {
+            lastFailure = "Not on Wi-Fi."
+            return
+        }
+
+        // A manually configured address wins: the user told us where the TV is,
+        // so there is nothing to discover.
+        let manual = Preferences.shared.manualHost.trimmingCharacters(in: .whitespaces)
+        if !manual.isEmpty {
+            let host = NWEndpoint.Host(manual)
+            let port = NWEndpoint.Port(rawValue: AndroidTVTransport.sessionPort) ?? .any
+            await connect(to: DiscoveredTV(
+                serviceName: manual,
+                endpoint: .hostPort(host: host, port: port),
+                host: manual,
+                port: AndroidTVTransport.sessionPort
+            ))
+            if isLive { return }
+        }
 
         if let cached = cachedAddress,
            let name = discovery.lastKnownServiceName {
@@ -113,6 +168,7 @@ final class RemoteController {
             if let host = tv.host { cachedAddress = (host, tv.port ?? AndroidTVTransport.sessionPort) }
         } catch {
             connectedTV = nil
+            lastFailure = (error as? LocalizedError)?.errorDescription ?? "\(error)"
         }
     }
 
@@ -120,9 +176,43 @@ final class RemoteController {
         Task { await perform(key) }
     }
 
-    func perform(_ key: RemoteKey) async {
+    @discardableResult
+    func perform(_ key: RemoteKey) async -> Bool {
         await ensureLive()
-        try? await transport.send(key)
+        do {
+            try await transport.send(key)
+            lastFailure = nil
+            return true
+        } catch {
+            lastFailure = (error as? LocalizedError)?.errorDescription ?? "Send failed"
+            return false
+        }
+    }
+
+    @discardableResult
+    func launch(_ appLink: String) async -> Bool {
+        await ensureLive()
+        do {
+            try await transport.launch(appLink)
+            lastFailure = nil
+            return true
+        } catch {
+            lastFailure = (error as? LocalizedError)?.errorDescription ?? "Launch failed"
+            return false
+        }
+    }
+
+    @discardableResult
+    func setVolume(level: UInt64) async -> Bool {
+        await ensureLive()
+        do {
+            try await transport.setVolume(level: level)
+            lastFailure = nil
+            return true
+        } catch {
+            lastFailure = (error as? LocalizedError)?.errorDescription ?? "Volume failed"
+            return false
+        }
     }
 
     private func firstBrowseResult(timeout: Duration) async -> DiscoveredTV? {

@@ -1,4 +1,5 @@
 import Foundation
+import TVRemoteCore
 
 enum DeepLinkAction: Equatable {
     case key(RemoteKey)

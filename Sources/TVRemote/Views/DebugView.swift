@@ -1,4 +1,5 @@
 import SwiftUI
+import TVRemoteCore
 
 struct DebugView: View {
     let controller: RemoteController
@@ -16,8 +17,22 @@ struct DebugView: View {
                 labelled("Remembered", controller.discovery.lastKnownServiceName ?? "none")
                 labelled("Found", "\(controller.discovery.televisions.count)")
                 labelled("Endpoint", endpointDescription)
+                labelled("Network", NetworkReachability.shared.summary)
+                labelled("Fixed address", Preferences.shared.manualHost.isEmpty
+                    ? "none" : Preferences.shared.manualHost)
             }
             .listRowBackground(Color.surfaceRaised)
+
+            if !TransportLog.shared.previousRun.isEmpty {
+                Section("Previous run (survives a crash)") {
+                    ForEach(Array(TransportLog.shared.previousRun.enumerated()), id: \.offset) { _, message in
+                        Text(message)
+                            .font(.system(size: 12, design: .monospaced))
+                            .foregroundStyle(Color.textSecondary)
+                    }
+                }
+                .listRowBackground(Color.surfaceRaised)
+            }
 
             Section("Transport log") {
                 let log = TransportLog.shared.entries

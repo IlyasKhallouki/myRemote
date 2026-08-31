@@ -19,5 +19,16 @@
 	</array>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>TVRemote needs local network access to find your TV and send it commands.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
+	<key>NSSupportsLiveActivitiesFrequentUpdates</key>
+	<true/>
+	<!-- The Live Activity gives us a Lock Screen UI but no background execution.
+	     Silent audio under this mode is what keeps the TLS session to the TV open
+	     between presses; see AudioKeepAlive. It only runs while a session is up. -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 </dict>
 </plist>

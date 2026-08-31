@@ -1,4 +1,5 @@
 import SwiftUI
+import TVRemoteCore
 
 struct StatusPill: View {
     let title: String

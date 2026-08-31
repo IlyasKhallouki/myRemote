@@ -1,4 +1,5 @@
 import SwiftUI
+import TVRemoteCore
 
 struct DPadView: View {
     let send: (RemoteKey) -> Void

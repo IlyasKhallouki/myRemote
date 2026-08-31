@@ -1,4 +1,5 @@
 import Foundation
+import TVRemoteCore
 
 enum DPadResolution {
     static let threshold: CGFloat = 24

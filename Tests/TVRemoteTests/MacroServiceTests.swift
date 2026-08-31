@@ -1,4 +1,5 @@
 import XCTest
+import TVRemoteCore
 @testable import TVRemote
 
 @MainActor

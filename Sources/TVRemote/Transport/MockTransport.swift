@@ -1,4 +1,5 @@
 import Foundation
+import TVRemoteCore
 
 @MainActor
 @Observable
@@ -7,6 +8,13 @@ final class MockTransport: TVTransport {
     private(set) var volumeState: VolumeState?
 
     private(set) var state: TransportState = .idle
+    private(set) var isOn = true
+    private(set) var currentApp = ""
+
+    var isHealthy: Bool {
+        if case .connected = state { return true }
+        return false
+    }
 
     func connect(to tv: DiscoveredTV) async throws {
         state = .connecting
@@ -18,6 +26,11 @@ final class MockTransport: TVTransport {
     func send(_ key: RemoteKey) async throws {
         guard case .connected = state else { throw TransportError.notConnected }
         append("send \(key.rawValue)")
+    }
+
+    func setVolume(level: UInt64) async throws {
+        guard case .connected = state else { throw TransportError.notConnected }
+        append("volume -> \(level)")
     }
 
     func launch(_ appLink: String) async throws {

@@ -1,4 +1,5 @@
 import SwiftUI
+import TVRemoteCore
 
 struct TVPickerSheet: View {
     let discovery: DiscoveryService

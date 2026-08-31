@@ -71,6 +71,9 @@ enum Credentials {
               let entries = items as? [[String: Any]],
               let first = entries.first else { return nil }
         guard let raw = first[kSecImportItemIdentity as String] else { return nil }
+        // Was a force cast. A surprise here should surface as "malformed
+        // credential", not as a crash on the connect path.
+        guard CFGetTypeID(raw as CFTypeRef) == SecIdentityGetTypeID() else { return nil }
         return (raw as! SecIdentity)
     }
 }
