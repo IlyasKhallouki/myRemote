@@ -1,0 +1,9 @@
+<svg viewBox="0 0 512 512" width="512" height="512" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TVRemote">
+  <!-- Full bleed and square on purpose: iOS applies its own corner mask, so a
+       pre-rounded source would be clipped twice. Colours are the app's own,
+       from Sources/TVRemoteCore/Theme.swift. -->
+  <rect width="512" height="512" fill="#0E1013"/>
+  <rect x="86" y="118" width="340" height="222" rx="30" fill="none" stroke="#5DCAA5" stroke-width="24"/>
+  <polyline points="196,258 256,198 316,258" fill="none" stroke="#3ECF8E" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="196" y="396" width="120" height="22" rx="11" fill="#3D564C"/>
+</svg>

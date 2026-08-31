@@ -128,6 +128,7 @@ either works before trusting them.
 ## Layout
 
 ```
+Icon.svg, Icon.png       app icon source and the render xtool packs
 Sources/TVRemoteCore      shared: keys, macros, theme, activity attributes, intents
 Sources/TVRemote          app: transport, discovery, preferences, views
 Sources/TVRemoteWidget    Live Activity UI
